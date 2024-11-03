@@ -12,11 +12,11 @@ var f embed.FS
 
 func main() {
 	router := gin.Default()
-	router.GET("/employee", func(c *gin.Context) {
-		c.File("./public/employee.html")
-	})
-	router.POST("/employee", func(c *gin.Context) {
-		c.String(http.StatusOK, "New request POSTed successfully!")
+	router.GET("/employees/:username/*rest", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"username": c.Param("username"),
+			"rest":     c.Param("rest"),
+		})
 	})
 	log.Fatal(router.Run(":3000"))
 }

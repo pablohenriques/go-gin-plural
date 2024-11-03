@@ -12,8 +12,11 @@ var f embed.FS
 
 func main() {
 	router := gin.Default()
-	router.StaticFile("/", "./public/index.html")
-	router.Static("/public", "./public")
-	router.StaticFS("/fs", http.FileSystem(http.FS(f)))
+	router.GET("/employee", func(c *gin.Context) {
+		c.File("./public/employee.html")
+	})
+	router.POST("/employee", func(c *gin.Context) {
+		c.String(http.StatusOK, "New request POSTed successfully!")
+	})
 	log.Fatal(router.Run(":3000"))
 }

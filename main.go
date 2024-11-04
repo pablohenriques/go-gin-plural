@@ -2,18 +2,33 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 	"log"
 	"net/http"
 	"time"
 )
 
 type TimeOffRequest struct {
-	Date   time.Time `json:"date" form:"date" binding:"-" time_format:"2006-01-02"`
-	Amount float64   `json:"amount" form:"amount" binding:"-"`
+	Date   time.Time `json:"date" form:"date" binding:"required,future" time_format:"2006-01-02"`
+	Amount float64   `json:"amount" form:"amount" binding:"required,gt=0"`
+}
+
+var ValidatorFuture validator.Func = func(fl validator.FieldLevel) bool {
+	date, ok := fl.Field().Interface().(time.Time)
+	if ok {
+		return date.After(time.Now())
+	}
+	return true
+
 }
 
 func main() {
 	router := gin.Default()
+
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		v.RegisterValidation("future", ValidatorFuture)
+	}
 
 	router.GET("/employee", func(c *gin.Context) {
 		c.File("./public/employee.html")

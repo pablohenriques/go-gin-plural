@@ -2,55 +2,52 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/validator/v10"
+	"io"
 	"log"
 	"net/http"
-	"time"
+	"os"
 )
-
-type TimeOffRequest struct {
-	Date   time.Time `json:"date" form:"date" binding:"required,future" time_format:"2006-01-02"`
-	Amount float64   `json:"amount" form:"amount" binding:"required,gt=0"`
-}
-
-var ValidatorFuture validator.Func = func(fl validator.FieldLevel) bool {
-	date, ok := fl.Field().Interface().(time.Time)
-	if ok {
-		return date.After(time.Now())
-	}
-	return true
-
-}
 
 func main() {
 	router := gin.Default()
 
-	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		v.RegisterValidation("future", ValidatorFuture)
-	}
+	router.StaticFile("/", "./index.html")
 
-	router.GET("/employee", func(c *gin.Context) {
-		c.File("./public/employee.html")
+	router.GET("/tale_of_two_cities", func(c *gin.Context) {
+		f, err := os.Open("./a_tale_of_two_cities.txt")
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+		}
+		defer f.Close()
+
+		data, err := io.ReadAll(f)
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+		}
+		c.Data(http.StatusOK, "text/plain", data)
+
 	})
 
-	router.POST("/employee", func(c *gin.Context) {
-		var timeoffRequest TimeOffRequest
-		if err := c.ShouldBind(&timeoffRequest); err == nil {
-			c.JSON(http.StatusOK, timeoffRequest)
-		} else {
-			c.String(http.StatusInternalServerError, err.Error())
+	router.GET("/great_expectations", func(c *gin.Context) {
+		f, err := os.Open("./great_expectations.txt")
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
 		}
-	})
+		defer f.Close()
 
-	apiGroup := router.Group("/api")
-	apiGroup.POST("/timeoff", func(c *gin.Context) {
-		var timeoffRequest TimeOffRequest
-		if err := c.ShouldBind(&timeoffRequest); err == nil {
-			c.JSON(http.StatusOK, timeoffRequest)
-		} else {
-			c.String(http.StatusInternalServerError, err.Error())
+		fi, err := f.Stat()
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
 		}
+
+		c.DataFromReader(http.StatusOK,
+			fi.Size(),
+			"text/plain",
+			f,
+			map[string]string{
+				"Content-Disposition": "attachment;filename=great_expetations.txt",
+			},
+		)
 	})
 
 	log.Fatal(router.Run(":3000"))

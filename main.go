@@ -19,36 +19,23 @@ func main() {
 			c.AbortWithError(http.StatusInternalServerError, err)
 		}
 		defer f.Close()
+		c.Stream(streamer(f))
 
-		data, err := io.ReadAll(f)
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-		}
-		c.Data(http.StatusOK, "text/plain", data)
-
-	})
-
-	router.GET("/great_expectations", func(c *gin.Context) {
-		f, err := os.Open("./great_expectations.txt")
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-		}
-		defer f.Close()
-
-		fi, err := f.Stat()
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-		}
-
-		c.DataFromReader(http.StatusOK,
-			fi.Size(),
-			"text/plain",
-			f,
-			map[string]string{
-				"Content-Disposition": "attachment;filename=great_expetations.txt",
-			},
-		)
 	})
 
 	log.Fatal(router.Run(":3000"))
+}
+
+func streamer(r io.Reader) func(io.Writer) bool {
+	return func(step io.Writer) bool {
+		for {
+			buf := make([]byte, 4*2^10)
+			if _, err := r.Read(buf); err == nil {
+				_, err := step.Write(buf)
+				return err == nil
+			} else {
+				return false
+			}
+		}
+	}
 }

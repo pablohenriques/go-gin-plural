@@ -2,6 +2,7 @@ package main
 
 import (
 	"gin-course-plural/employee"
+	"github.com/gin-contrib/gzip"
 	"net/http"
 	"os"
 	"strconv"
@@ -15,6 +16,10 @@ func main() {
 	}
 	r := gin.Default()
 	r.LoadHTMLGlob("./templates/*")
+
+	r.Use(gin.BasicAuth(gin.Accounts{"admin": "password"}))
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
+
 	registerRoutes(r)
 
 	r.Run()
@@ -69,6 +74,35 @@ func registerRoutes(r *gin.Engine) {
 			c.Redirect(http.StatusFound, "/employees/"+employeeIDRaw)
 		}
 	})
+
+	g := r.Group("/api/employees")
+	{
+		g.GET("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, employee.GetAll())
+		})
+		g.GET("/:employeeID", func(c *gin.Context) {
+			employeeIDRaw := c.Param("employeeID")
+			if emp, ok := tryToGetEmployee(c, employeeIDRaw); ok {
+				c.JSON(http.StatusOK, *emp)
+			}
+		})
+		g.POST("/:employeeID", func(c *gin.Context) {
+			var timeoff employee.TimeOff
+			err := c.ShouldBind(&timeoff)
+			if err != nil {
+				c.AbortWithError(http.StatusInternalServerError, err)
+				return
+			}
+			timeoff.Type = employee.TimeoffTypePTO
+			timeoff.Status = employee.TimeoffStatusRequested
+
+			employeeIDRaw := c.Param("employeeID")
+			if emp, ok := tryToGetEmployee(c, employeeIDRaw); ok {
+				emp.TimeOff = append(emp.TimeOff, timeoff)
+				c.JSON(http.StatusOK, *emp)
+			}
+		})
+	}
 
 	r.Static("/public", "./public")
 }

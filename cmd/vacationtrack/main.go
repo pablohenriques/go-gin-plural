@@ -3,9 +3,11 @@ package main
 import (
 	"gin-course-plural/employee"
 	"github.com/gin-contrib/gzip"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,7 +19,7 @@ func main() {
 	r := gin.Default()
 	r.LoadHTMLGlob("./templates/*")
 
-	r.Use(gin.BasicAuth(gin.Accounts{"admin": "password"}))
+	//r.Use(gin.BasicAuth(gin.Accounts{"admin": "password"}))
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	registerRoutes(r)
@@ -75,7 +77,7 @@ func registerRoutes(r *gin.Engine) {
 		}
 	})
 
-	g := r.Group("/api/employees")
+	g := r.Group("/api/employees", Benchmark)
 	{
 		g.GET("/", func(c *gin.Context) {
 			c.JSON(http.StatusOK, employee.GetAll())
@@ -105,4 +107,11 @@ func registerRoutes(r *gin.Engine) {
 	}
 
 	r.Static("/public", "./public")
+}
+
+var Benchmark gin.HandlerFunc = func(c *gin.Context) {
+	t := time.Now()
+	c.Next()
+	elapsed := time.Since(t)
+	log.Print("Time to process", elapsed)
 }

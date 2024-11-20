@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"gin-course-plural/employee"
 	"github.com/gin-contrib/gzip"
 	"log"
@@ -21,6 +22,7 @@ func main() {
 
 	//r.Use(gin.BasicAuth(gin.Accounts{"admin": "password"}))
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
+	r.Use(myErrorLogger)
 
 	registerRoutes(r)
 
@@ -77,6 +79,15 @@ func registerRoutes(r *gin.Engine) {
 		}
 	})
 
+	r.GET("/errors", func(c *gin.Context) {
+		err := &gin.Error{
+			Err:  errors.New("something went horribly wrong"),
+			Type: gin.ErrorTypeRender | gin.ErrorTypePublic,
+			Meta: "this error was intentional",
+		}
+		c.Error(err)
+	})
+
 	g := r.Group("/api/employees", Benchmark)
 	{
 		g.GET("/", func(c *gin.Context) {
@@ -114,4 +125,15 @@ var Benchmark gin.HandlerFunc = func(c *gin.Context) {
 	c.Next()
 	elapsed := time.Since(t)
 	log.Print("Time to process", elapsed)
+}
+
+var myErrorLogger gin.HandlerFunc = func(c *gin.Context) {
+	c.Next()
+	for _, err := range c.Errors {
+		log.Print(map[string]any{
+			"Err":  err.Error(),
+			"Type": err.Type,
+			"Meta": err.Meta,
+		})
+	}
 }

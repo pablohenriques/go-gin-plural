@@ -23,6 +23,7 @@ func main() {
 	//r.Use(gin.BasicAuth(gin.Accounts{"admin": "password"}))
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.Use(myErrorLogger)
+	r.Use(gin.CustomRecovery(myRecoveryFunc))
 
 	registerRoutes(r)
 
@@ -88,6 +89,10 @@ func registerRoutes(r *gin.Engine) {
 		c.Error(err)
 	})
 
+	r.GET("/panic", func(c *gin.Context) {
+		panic("a Go program should almostnever  call 'panic'")
+	})
+
 	g := r.Group("/api/employees", Benchmark)
 	{
 		g.GET("/", func(c *gin.Context) {
@@ -136,4 +141,8 @@ var myErrorLogger gin.HandlerFunc = func(c *gin.Context) {
 			"Meta": err.Meta,
 		})
 	}
+}
+
+var myRecoveryFunc gin.RecoveryFunc = func(c *gin.Context, err any) {
+	log.Print("Custom recovery functions can be used to add fine=grained control over recovery strategies", err)
 }
